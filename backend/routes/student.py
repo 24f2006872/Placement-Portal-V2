@@ -5,6 +5,7 @@ from extensions import db
 from utils import role_required
 from extensions import cache
 import json
+from tasks.jobs import export_student_applications
 
 student_bp = Blueprint("student", __name__)
 
@@ -102,3 +103,19 @@ def search_drives():
         }
         for d in drives
     ])
+
+@student_bp.route("/export", methods=["GET"])
+@jwt_required()
+@role_required("STUDENT")
+def export_applications():
+
+    user_id = int(get_jwt_identity())
+
+    student = StudentProfile.query.filter_by(user_id=user_id).first()
+
+    task = export_student_applications.delay(student.id)
+
+    return {
+        "message": "Export started",
+        "task_id": task.id
+    }

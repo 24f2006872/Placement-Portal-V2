@@ -9,7 +9,6 @@ from routes.admin import admin_bp
 from routes.company import company_bp
 from routes.student import student_bp
 
-
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -19,8 +18,6 @@ def create_app():
 
     db.init_app(app)
     jwt.init_app(app)
-
-    
 
     with app.app_context():
         db.create_all()
