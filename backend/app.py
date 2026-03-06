@@ -5,6 +5,9 @@ from extensions import db, jwt
 from models import User
 from werkzeug.security import generate_password_hash
 from routes.auth import auth_bp
+from routes.admin import admin_bp
+from routes.company import company_bp
+from routes.student import student_bp
 
 
 def create_app():
@@ -17,9 +20,16 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
 
+    
+
     with app.app_context():
         db.create_all()
         create_admin()
+
+
+    app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(company_bp, url_prefix="/company")
+    app.register_blueprint(student_bp, url_prefix="/student")
 
     return app
 
@@ -39,3 +49,5 @@ def create_admin():
         db.session.add(admin)
         db.session.commit()
         print("Admin created successfully!")
+
+

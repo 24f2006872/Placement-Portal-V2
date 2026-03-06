@@ -65,7 +65,6 @@ def register_company():
 
     return jsonify({"message": "Company registered. Await admin approval."}), 201
 
-
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -81,10 +80,10 @@ def login():
     if not user.is_active:
         return jsonify({"message": "Account deactivated"}), 403
 
-    access_token = create_access_token(identity={
-        "id": user.id,
-        "role": user.role
-    })
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={"role": user.role}
+    )
 
     return jsonify({
         "access_token": access_token,
