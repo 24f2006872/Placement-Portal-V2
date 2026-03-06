@@ -47,8 +47,8 @@ def create_drive():
 @role_required("COMPANY")
 def view_drives():
 
-    user = get_jwt_identity()
-    company = CompanyProfile.query.filter_by(user_id=user["id"]).first()
+    user_id = get_jwt_identity()
+    company = CompanyProfile.query.filter_by(user_id=user_id).first()
 
     drives = PlacementDrive.query.filter_by(company_id=company.id).all()
 
@@ -92,3 +92,28 @@ def update_status(id):
     db.session.commit()
 
     return {"message": "Application updated"}
+
+@company_bp.route("/dashboard")
+@jwt_required()
+@role_required("COMPANY")
+def company_dashboard():
+
+    user_id = get_jwt_identity()
+    print("USER ID:", user_id)
+    company = CompanyProfile.query.filter_by(user_id=user_id).first()
+    print("COMPANY:", company)
+    drives = PlacementDrive.query.filter_by(company_id=company.id).all()
+
+    result = []
+
+    for d in drives:
+        applicant_count = Application.query.filter_by(drive_id=d.id).count()
+
+        result.append({
+            "drive_id": d.id,
+            "title": d.job_title,
+            "status": d.status,
+            "applicants": applicant_count
+        })
+
+    return jsonify(result)

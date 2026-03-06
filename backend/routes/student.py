@@ -1,8 +1,10 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import PlacementDrive, StudentProfile, Application
 from extensions import db
 from utils import role_required
+from extensions import cache
+import json
 
 student_bp = Blueprint("student", __name__)
 
@@ -11,17 +13,29 @@ student_bp = Blueprint("student", __name__)
 @role_required("STUDENT")
 def view_drives():
 
+    cached_drives = cache.get("approved_drives")
+
+    if cached_drives:
+        return json.loads(cached_drives)
+
     drives = PlacementDrive.query.filter_by(status="APPROVED").all()
 
-    result = []
-    for d in drives:
-        result.append({
+    result = [
+        {
             "id": d.id,
             "title": d.job_title,
             "min_cgpa": d.min_cgpa
-        })
+        }
+        for d in drives
+    ]
 
-    return jsonify(result)
+    cache.setex(
+        "approved_drives",
+        300,
+        json.dumps(result)
+    )
+
+    return result
 
 @student_bp.route("/apply/<int:drive_id>", methods=["POST"])
 @jwt_required()
@@ -47,3 +61,44 @@ def apply_drive(drive_id):
 
     return {"message": "Applied successfully"}
 
+@student_bp.route("/dashboard")
+@jwt_required()
+@role_required("STUDENT")
+def student_dashboard():
+
+    user_id = get_jwt_identity()
+    student = StudentProfile.query.filter_by(user_id=user_id).first()
+
+    applications = Application.query.filter_by(student_id=student.id).all()
+
+    result = []
+
+    for app in applications:
+        result.append({
+            "drive": app.drive.job_title,
+            "status": app.status,
+            "applied_on": app.application_date
+        })
+
+    return jsonify(result)
+
+@student_bp.route("/search/drives")
+@jwt_required()
+@role_required("STUDENT")
+def search_drives():
+
+    query = request.args.get("q")
+
+    drives = PlacementDrive.query.filter(
+        PlacementDrive.job_title.ilike(f"%{query}%"),
+        PlacementDrive.status == "APPROVED"
+    ).all()
+
+    return jsonify([
+        {
+            "id": d.id,
+            "title": d.job_title,
+            "min_cgpa": d.min_cgpa
+        }
+        for d in drives
+    ])
